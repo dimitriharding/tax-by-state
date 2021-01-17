@@ -1,271 +1,247 @@
+import React from 'react'
+import { useForm } from 'react-hook-form'
+import * as currencyFormatter from 'currency-formatter'
 import {
+  FormErrorMessage,
+  FormLabel,
+  FormControl,
+  Input,
   Container,
-  Heading,
   VStack,
-  Stack,
-  Text,
-  Code,
-  OrderedList,
-  ListItem,
-  Link,
-  Button,
-  Slider,
-  SliderThumb,
-  SliderTrack,
-  SliderFilledTrack,
-  Switch,
-  Avatar,
-  Flex,
-  Badge,
+  Select,
   Box,
-  Divider,
+  Center,
+  HStack,
+  FormHelperText,
+  InputGroup,
+  InputLeftElement,
+  useRadioGroup,
+  chakra,
 } from '@chakra-ui/react'
 
+import stateTaxes from '../data/stateTaxes'
+
+import { calculateTax } from '../util/calculator'
+import Display from '../components/Display'
+import Header from '../components/Header'
+import RadioCard from '../components/RadioCard'
+import Footer from '../components/Footer'
+
+const Calculator = chakra(Box)
+
 function Home() {
+  const [currentState, setCurrentState] = React.useState(null)
+  const { errors, register } = useForm()
+  const [radioValue, setRadioValue] = React.useState<React.ReactText>('single')
+  const [itemCost, setItemCost] = React.useState()
+  const [numberOfItems, setNumberOfItems] = React.useState()
+
+  const onlyNumbers = (value) => value.replace(/[^0-9]/g, '')
+
+  const handleChange = (event) => {
+    const index = event.target.value
+    setCurrentState(index)
+  }
+
+  const handleCostChange = (event) =>
+    setItemCost(onlyNumbers(event.target.value))
+
+  const handleNumberOfItems = (event) =>
+    setNumberOfItems(onlyNumbers(event.target.value))
+
+  const options = [
+    { name: 'Only one', value: 'single' },
+    { name: 'Multiple Items', value: 'multiple' },
+  ]
+
+  const { getRootProps, getRadioProps } = useRadioGroup({
+    name: 'numberOfItems',
+    defaultValue: 'single',
+    onChange: setRadioValue,
+  })
+
+  const group = getRootProps()
+
+  function validateItems(items) {
+    if (!items) return 'Number of items is required'
+    if (isNaN(items)) return 'Number of items should be a number'
+    if (items === '0') return 'Number of items should be more than 0'
+    return true
+  }
+
+  function validateState(state) {
+    if (!state) {
+      return 'State is required'
+    } else return true
+  }
+
+  function validateCost(value) {
+    if (!value) {
+      return 'Cost is required'
+    } else if (isNaN(value)) {
+      return 'Cost should be a number'
+    } else {
+      return true
+    }
+  }
+
   return (
-    <Container>
+    <Container backgroundImage="url('/img/background-image.png')">
       <VStack my={24} spacing={12}>
-        <Heading as="h1" fontSize="9xl" textAlign="center">
-          Dark
-        </Heading>
-        <Text fontSize="3xl" textAlign="center">
-          An opinionated, dark-themed Next.js &amp; Chakra UI GitHub repository
-          template
-        </Text>
-        <Text>
-          Hit the ground running with one <Code>yarn install</Code>.
-        </Text>
-
-        <Divider />
-
-        <Container centerContent>
-          <Heading as="h2" fontSize="2xl" mb={4}>
-            How to use
-          </Heading>
-          <OrderedList>
-            <ListItem>
-              Generate a repository with this template by clicking on{' '}
-              <Link
-                href="https://github.com/kahlil/dark/generate"
-                isExternal
-                textDecoration="underline"
+        <Calculator
+          bg="teal.500"
+          w="80%"
+          p="20px"
+          boxShadow="calculator"
+          rounded="md"
+          id="calculator"
+          textRendering="geometricPrecision"
+        >
+          <Header>Calculate Tax by State</Header>
+          <Display
+            operations={
+              currentState
+                ? `in ${stateTaxes[currentState].name} @ ${
+                    stateTaxes[currentState].tax
+                  }% ${
+                    itemCost
+                      ? `for ${currencyFormatter.format(itemCost, {
+                          code: 'USD',
+                        })}`
+                      : ''
+                  } ${
+                    numberOfItems && itemCost && radioValue === 'multiple'
+                      ? ` X ${numberOfItems}`
+                      : ''
+                  }`
+                : ''
+            }
+            tax={calculateTax({
+              cost: itemCost,
+              state: currentState,
+              items: radioValue === 'multiple' ? numberOfItems : undefined,
+            })}
+          />
+          <form>
+            <FormControl color="white" mt={2} isInvalid={errors.state}>
+              <Select
+                ref={register({ validate: validateState })}
+                name="state"
+                onChange={handleChange}
+                placeholder="Select a state"
+                border="none"
+                fontWeight="semibold"
+                _focus={{ color: 'currentcolor' }}
+                fontSize="2em"
               >
-                github.com/kahlil/dark/generate
-              </Link>
-            </ListItem>
-            <ListItem>Clone your new repository</ListItem>
-            <ListItem>
-              Run <Code>yarn install</Code>
-            </ListItem>
-            <ListItem>
-              Hit the ground running with{' '}
-              <Link
-                href="https://nextjs.org"
-                isExternal
-                textDecoration="underline"
+                {stateTaxes.map((state, index) => (
+                  <option key={state.name} value={index}>
+                    {state.name}
+                  </option>
+                ))}
+              </Select>
+              <FormErrorMessage>
+                {errors.state && errors.state.message}
+              </FormErrorMessage>
+            </FormControl>
+            <FormControl mb={0} color="white" mt={2} isInvalid={errors.cost}>
+              {itemCost && <FormLabel ml={5}>Item cost</FormLabel>}
+              <InputGroup size="lg">
+                <InputLeftElement
+                  pointerEvents="none"
+                  color="gray.300"
+                  fontSize="2em"
+                  ml={1}
+                >
+                  $
+                </InputLeftElement>
+                <Input
+                  bg="transparent"
+                  name="cost"
+                  onChange={handleCostChange}
+                  placeholder="Item cost"
+                  value={itemCost}
+                  ref={register({ validate: validateCost })}
+                  border="none"
+                  fontSize="2em"
+                  _focus={{
+                    color: 'currentcolor',
+                  }}
+                  _placeholder={{
+                    color: 'gray.300',
+                  }}
+                  backgroundColor="transparent"
+                />
+              </InputGroup>
+              <FormErrorMessage>
+                {errors.cost && errors.cost.message}
+              </FormErrorMessage>
+            </FormControl>
+            {radioValue === 'multiple' && (
+              <FormControl
+                mb={0}
+                color="white"
+                mt={2}
+                ml={2}
+                isInvalid={errors.items}
               >
-                Next.js
-              </Link>
-              ,{' '}
-              <Link
-                href="https://www.typescriptlang.org/"
-                isExternal
-                textDecoration="underline"
-              >
-                TypeScript
-              </Link>{' '}
-              &amp;{' '}
-              <Link
-                href="https://chakra-ui.com"
-                isExternal
-                textDecoration="underline"
-              >
-                Chakra UI
-              </Link>{' '}
-              with the dark theme as the default
-            </ListItem>
-          </OrderedList>
-        </Container>
-
-        <Divider />
-
-        <Container>
-          <Heading as="h3" fontSize="xl" mb={4} textAlign="center">
-            Chakra + Next = ❤️
-          </Heading>
-          <Stack>
-            <Text>
-              After getting started with this GitHub repo template you have{' '}
-              Chakra UI ready to go and configured for Next.js.
-            </Text>
-            <Text>
-              The dark theme is configured to be the inital color mode.
-            </Text>
-            <Text>
-              The <em>full arsenal</em> of Chakra UI's features and components
-              is at your disposal in this Next.js app and configurable to your
-              wishes.
-            </Text>
-
-            <Text pb={2}>Oh, look! Chakra UI buttons:</Text>
-            <Stack pb={2} spacing={4} direction="row" align="center">
-              <Button size="xs">Button</Button>
-              <Button colorScheme="teal" size="sm">
-                Button
-              </Button>
-              <Button colorScheme="purple" size="md">
-                Button
-              </Button>
-              <Button colorScheme="pink" size="lg">
-                Button
-              </Button>
-            </Stack>
-
-            <Text py={2}>Woah! A Chakra UI slider:</Text>
-            <Slider
-              pb={2}
-              aria-label="slider-ex-2"
-              colorScheme="pink"
-              defaultValue={30}
-            >
-              <SliderTrack>
-                <SliderFilledTrack />
-              </SliderTrack>
-              <SliderThumb />
-            </Slider>
-
-            <Text pt={4} pb={2}>
-              Blimey! Chakra UI switches:
-            </Text>
-            <Stack pb={2} align="center" direction="row">
-              <Switch size="sm" colorScheme="teal" />
-              <Switch size="md" colorScheme="purple" />
-              <Switch size="lg" colorScheme="pink" />
-            </Stack>
-
-            <Text py={2}>
-              Damn, yo! Composed Chakra UI components for displaying data:
-            </Text>
-            <Flex pb={2}>
-              <Avatar src="https://bit.ly/sage-adebayo" />
-              <Box ml="3">
-                <Text fontWeight="bold">
-                  Segun Adebayo
-                  <Badge ml="1" colorScheme="green">
-                    New
-                  </Badge>
-                </Text>
-                <Text fontSize="sm">UI Engineer, creator of Chakra UI</Text>
-              </Box>
-            </Flex>
-
-            <Text py={2}>
-              See the code for the examples above in the{' '}
-              <Link
-                href="https://github.com/kahlil/dark/blob/main/src/pages/index.tsx"
-                isExternal
-                textDecoration="underline"
-              >
-                source code
-              </Link>
-              .
-            </Text>
-          </Stack>
-        </Container>
-
-        <Divider />
-
-        <Container>
-          <Heading as="h3" fontSize="xl" mb={4} textAlign="center">
-            Other Tech 🦾
-          </Heading>
-          <Stack>
-            <Text>
-              Besides the main tech stack of Next, TypeScript and Chakra UI,
-              this template also comes with{' '}
-              <Link
-                href="https://prettier.io"
-                isExternal
-                textDecoration="underline"
-              >
-                Prettier
-              </Link>
-              ,{' '}
-              <Link
-                href="https://eslint.org/"
-                isExternal
-                textDecoration="underline"
-              >
-                ESLint
-              </Link>
-              ,{' '}
-              <Link
-                href="https://github.com/azz/pretty-quick"
-                isExternal
-                textDecoration="underline"
-              >
-                pretty-quick
-              </Link>{' '}
-              ,{' '}
-              <Link
-                href="https://typicode.github.io/husky"
-                isExternal
-                textDecoration="underline"
-              >
-                Husky
-              </Link>{' '}
-              ,
-              <Link
-                href="https://jestjs.io/"
-                isExternal
-                textDecoration="underline"
-              >
-                Jest
-              </Link>
-              , and{' '}
-              <Link
-                href="https://testing-library.com/"
-                isExternal
-                textDecoration="underline"
-              >
-                Testing Library
-              </Link>
-              .
-            </Text>
-            <Text>
-              Pre-configured with sensible defaults provided by the community or
-              the creators of the tools.
-            </Text>
-          </Stack>
-        </Container>
-        <Divider />
-        <Text textAlign="center">
-          Made with ✨ by{' '}
-          <Link
-            href="https://www.kahlillechelt.com"
-            isExternal
-            textDecoration="underline"
-          >
-            Kahlil Lechelt
-          </Link>{' '}
-          &bull;{' '}
-          <Link
-            href="https://github.com/kahlil/dark"
-            isExternal
-            textDecoration="underline"
-          >
-            github/kahlil/dark
-          </Link>{' '}
-          &bull;{' '}
-          <Link
-            href="https://twitter.com/kahliltweets"
-            isExternal
-            textDecoration="underline"
-          >
-            @kahliltweets
-          </Link>
-        </Text>
+                {numberOfItems && <FormLabel ml={4}>Number of items</FormLabel>}
+                <InputGroup size="lg">
+                  <InputLeftElement
+                    pointerEvents="none"
+                    color="gray.300"
+                    fontSize="2em"
+                  >
+                    #
+                  </InputLeftElement>
+                  <Input
+                    name="items"
+                    value={numberOfItems}
+                    onChange={handleNumberOfItems}
+                    placeholder="Number of items"
+                    ref={register({ validate: validateItems })}
+                    border="none"
+                    fontSize="2em"
+                    bg="transparent"
+                    _focus={{ color: 'currentcolor' }}
+                    _active={{
+                      color: 'currentcolor',
+                    }}
+                    _placeholder={{
+                      color: 'gray.300',
+                    }}
+                    backgroundColor="transparent"
+                  />
+                </InputGroup>
+                <FormErrorMessage>
+                  {errors.items && errors.items.message}
+                </FormErrorMessage>
+              </FormControl>
+            )}
+            <FormControl pl={5} mt={5} as="fieldset">
+              <Center>
+                <HStack {...group}>
+                  {options.map(({ value, name }) => {
+                    const radio = getRadioProps({ value })
+                    return (
+                      <RadioCard key={value} {...radio}>
+                        {name}
+                      </RadioCard>
+                    )
+                  })}
+                </HStack>
+              </Center>
+              <Center>
+                <FormHelperText color="gray.300">
+                  Indicate the number of items
+                </FormHelperText>
+              </Center>
+            </FormControl>
+            <Center></Center>
+          </form>
+        </Calculator>
       </VStack>
+      <Footer />
     </Container>
   )
 }
