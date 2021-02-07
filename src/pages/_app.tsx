@@ -10,6 +10,9 @@ function App({ Component, pageProps }: AppProps) {
       <Head>
         <meta content="IE=edge" httpEquiv="X-UA-Compatible" />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
+         {process.env.NODE_ENV === 'production' && (
+          <script async src="https://cdn.splitbee.io/sb.js" />
+        )}
       </Head>
       <ColorModeScript initialColorMode={customTheme.config.initialColorMode} />
       <ChakraProvider theme={customTheme}>
